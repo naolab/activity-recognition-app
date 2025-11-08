@@ -1,0 +1,500 @@
+<html>
+
+  <head>
+    <title>Activity Recognition - with Feature Save</title>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,maximum-scale=1">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <link rel="stylesheet" href="https://web.sfc.keio.ac.jp/~slash/ABC/ac/themes/TOBASIC.css" />
+    <link rel="stylesheet" href="https://web.sfc.keio.ac.jp/~slash/ABC/ac/themes/jquery.mobile.icons.min.css" />
+
+    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <script src="https://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+
+    <link rel="stylesheet" href="https://code.jquery.com/mobile/1.4.5/jquery.mobile.structure-1.4.5.min.css" />
+
+    <style>
+      .control-buttons {
+        margin: 10px 0;
+      }
+      .control-buttons button {
+        margin: 5px;
+        padding: 10px 20px;
+        font-size: 1em;
+      }
+      .info-box {
+        background-color: #f0f0f0;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+      }
+      #feature-history {
+        width: 95%;
+        height: 300px;
+        font-family: monospace;
+        font-size: 0.9em;
+      }
+      .label-input {
+        margin: 10px 0;
+      }
+      .label-input input {
+        padding: 8px;
+        font-size: 1em;
+        width: 200px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h2>Activity Recognition (特徴量保存版)</h2>
+
+    <div class="control-buttons">
+      <button onclick="requestMotionPermission();">Get permission and start sensing</button>
+      <button onclick="stopDeviceMotion();">Stop</button>
+    </div>
+
+    <div class="info-box">
+      <strong>収集フレーム数:</strong> <span id="frame-count" style="font-size:1.5em; color:blue;">0</span>
+    </div>
+
+    <div class="label-input">
+      <label for="activity-label"><strong>現在の行動ラベル:</strong></label>
+      <input type="text" id="activity-label" placeholder="例: walking, still, running" value="unknown">
+      <small style="display:block; margin-top:5px;">※ 行動を変える時にラベルを変更してください</small>
+    </div>
+
+    <h3>(3) Classification result</h3>
+    <ul>
+    <li> Result: <span id="current_result" style="color:red;font-size:2.0em; font-weight: bold; border-top: 1px solid black; border-bottom: 1px solid black;">null</span> </li>
+    </ul>
+
+    <h3>(2) Features for this time window</h3>
+    <ul>
+    <li> min x: <span id="xmin">0</span> </li>
+    <li> max x: <span id="xmax">0</span> </li>
+    <li> ave x: <span id="xave">0</span> </li>
+    <li> variance x: <span id="xvariance">0</span> </li>
+
+    <li> min y: <span id="ymin">0</span> </li>
+    <li> max y: <span id="ymax">0</span> </li>
+    <li> ave y: <span id="yave">0</span> </li>
+    <li> variance y: <span id="yvariance">0</span> </li>
+
+    <li> min z: <span id="zmin">0</span> </li>
+    <li> max z: <span id="zmax">0</span> </li>
+    <li> ave z: <span id="zave">0</span> </li>
+    <li> variance z: <span id="zvariance">0</span> </li>
+    </ul>
+
+    <h3>📊 特徴量履歴 (CSV形式)</h3>
+    <div class="control-buttons">
+      <button onclick="copyFeatures();">📋 クリップボードにコピー</button>
+      <button onclick="clearFeatures();">🗑️ 履歴をクリア</button>
+    </div>
+    <textarea id="feature-history" readonly></textarea>
+
+    <hr/>
+
+    <h3>(1) Raw sensor values for this time window</h3>
+    <ul>
+    <li> X: <span id="accel-x">0</span> </li>
+    <li> Y: <span id="accel-y">0</span> </li>
+    <li> Z: <span id="accel-z">0</span> </li>
+    </ul>
+
+    <textarea id="raw-data" style="width:90%;height:30vh;"></textarea>
+
+    <hr style="margin-top: 50px; border: 2px solid #333;"/>
+
+    <!-- ============================================ -->
+    <!-- レポート -->
+    <!-- ============================================ -->
+    <div style="max-width: 800px; margin: 40px auto; padding: 25px; background-color: #ffffff; border: 1px solid #ddd; border-radius: 5px;">
+
+      <h2 style="color: #333; border-bottom: 2px solid #666; padding-bottom: 10px;">Activity Recognition - レポート</h2>
+
+      <p style="color: #666; margin-bottom: 20px;">
+        <strong>学籍番号</strong>: 72405264<br>
+        <strong>氏名</strong>: 津吉 直<br>
+        <strong>作成日</strong>: 2025年11月7日
+      </p>
+
+      <!-- 1. やったこと -->
+      <h3 style="color: #555; margin-top: 25px;">1. やったこと</h3>
+      <p style="line-height: 1.7;">
+        スマホの加速度センサーを使って、機械学習で行動を認識するシステムを作りました。
+        歩く、走る、静止、階段を登る・下りる、音楽を聴きながら歩く、など7種類の行動を判別できるようにしました。
+      </p>
+
+      <!-- 2. 使ったツール -->
+      <h3 style="color: #555; margin-top: 25px;">2. 使ったツール</h3>
+      <ul style="line-height: 1.8;">
+        <li><strong>機械学習ライブラリ</strong>: scikit-learn (Python)</li>
+        <li><strong>方法</strong>: 決定木（if文で条件分岐していく方法）</li>
+        <li><strong>データ数</strong>: 115個（7種類の行動）</li>
+        <li><strong>計算した特徴</strong>: X・Y・Z軸それぞれの最大値、最小値、平均値、分散（合計12個）</li>
+      </ul>
+
+      <!-- 3. テストの精度 -->
+      <h3 style="color: #555; margin-top: 25px;">3. テストの精度</h3>
+
+      <div style="background-color: #f0f8ff; padding: 20px; border-left: 4px solid #4a90e2; margin: 20px 0;">
+        <p style="font-size: 1.1em; margin: 0;">
+          <strong>正解率: <span style="color: #4a90e2; font-size: 1.4em;">83.48%</span></strong>
+        </p>
+        <p style="margin: 10px 0 0 0; font-size: 0.9em; color: #666;">
+          （テストデータでは86.96%）
+        </p>
+      </div>
+
+      <p style="line-height: 1.7;">
+        <strong>認識できる7種類の行動:</strong>
+      </p>
+      <ul style="line-height: 1.8;">
+        <li><strong>静止</strong>: 完璧に認識できた</li>
+        <li><strong>歩き（ポケット）</strong>: 完璧に認識できた</li>
+        <li><strong>歩き（手持ち）</strong>: 完璧に認識できた</li>
+        <li><strong>階段下り</strong>: 完璧に認識できた</li>
+        <li><strong>階段登り</strong>: ほぼ完璧</li>
+        <li><strong>歩き（音楽）</strong>: まあまあ認識できた</li>
+        <li><strong>走り</strong>: まあまあ認識できた（たまに他の行動と間違える）</li>
+      </ul>
+
+      <!-- 4. わかったこと -->
+      <h3 style="color: #555; margin-top: 25px;">4. わかったこと</h3>
+      <p style="line-height: 1.7;">
+        左右方向（Y軸）の動きが一番重要だということがわかりました。ポケットに入れた状態だと、
+        歩くときの体の左右の揺れが大きく加速度に現れるので、それで判別できるみたいです。
+      </p>
+      <p style="line-height: 1.7;">
+        判断の流れはこんな感じ:
+      </p>
+      <pre style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 0.9em;">
+if (左右の動きが小さい) {
+    → 静止
+} else if (左右の動きが中くらい) {
+    → 走るか階段登り
+} else {
+    → 歩く
+}</pre>
+
+      <!-- 5. 感想 -->
+      <h3 style="color: #555; margin-top: 25px;">5. 感想</h3>
+      <p style="line-height: 1.7;">
+        思ったより高い精度で認識できたので驚きました。特に静止状態は100%正確に判別できて、
+        機械学習の実用性を実感できました。ただ、歩くと走るを区別するのは難しくて、
+        もっとデータを集めたり、別の特徴を使ったりすれば改善できそうだと思いました。
+      </p>
+
+      <!-- フッター -->
+      <div style="margin-top: 30px; padding-top: 15px; border-top: 1px solid #ddd; text-align: center; color: #999; font-size: 0.9em;">
+        <p>感情と行動のコンピューティング 第3回課題</p>
+      </div>
+
+    </div>
+
+  </body>
+
+
+<!--  ===========================================  -->
+<script type="text/javascript">
+
+alert("Welcome to Activity Recognition with Feature Save!\n\n特徴量を自動保存してコピペできるバージョンです。");
+
+//CONFIG: Length of each time window
+const NUM_DATA_PER_FRAME = 200;
+
+//Arrays for saving the raw sensor data
+var xdata = [];
+var ydata = [];
+var zdata = [];
+var num_data = 0;
+
+//Features
+var xmin = 0.0;
+var xmax = 0.0;
+var xave = 0.0;
+var xvariance = 0.0;
+var ymin = 0.0;
+var ymax = 0.0;
+var yave = 0.0;
+var yvariance = 0.0;
+var zmin = 0.0;
+var zmax = 0.0;
+var zave = 0.0;
+var zvariance = 0.0;
+
+//NEW: Feature history storage
+var featureHistory = [];
+var frameCount = 0;
+var hasHeader = false;
+
+//////////////////////////////////////////////////////
+//Function to get sensor access permission from the browser
+//////////////////////////////////////////////////////
+function requestMotionPermission(){
+  if ( DeviceMotionEvent &&
+       typeof DeviceMotionEvent.requestPermission === 'function' ){
+      // iOS 13+ の Safari
+      // 許可を取得
+      DeviceMotionEvent.requestPermission().then(permissionState => {
+	  if (permissionState === 'granted') {
+              // 許可を得られた場合、devicemotionをイベントリスナーに追加
+	      window.addEventListener("devicemotion", handleAcceleration, false);
+	  } else {
+              // 許可を得られなかった場合の処理
+	      console.log("Permission not granted!");
+	      alert("Permission not granted!");
+	  }
+      }).catch(console.error) // https通信でない場合などで許可を取得できなかった場合
+
+  } else {
+      //For other devices
+      console.log("detected other device. so adding listener...");
+      window.addEventListener("devicemotion", handleAcceleration, false);
+  }
+
+}
+
+function stopDeviceMotion(){
+    window.removeEventListener("devicemotion", handleAcceleration, false);
+    alert("センサー停止しました。\n収集フレーム数: " + frameCount);
+}
+
+
+////////////////////////////////////////////////////////////////////
+//Function(1): 読み込まれてきた最新の加速度データ(X,Y,Z)を処理する関数
+//  - この関数は(機種によりますが) 秒速10〜100回というような高頻度で呼ばれます
+////////////////////////////////////////////////////////////////////
+function handleAcceleration(ev){
+
+    //alert("" + event.acceleration.x + " " + event.acceleration.y + " " + event.acceleration.z);
+    $('#accel-x').text( ev.acceleration.x );
+    xdata.push(ev.acceleration.x);
+    $('#accel-y').text( ev.acceleration.y );
+    ydata.push(ev.acceleration.y);
+    $('#accel-z').text( ev.acceleration.z );
+    zdata.push(ev.acceleration.z);
+    $('#raw-data').append(ev.acceleration.x + ", " + ev.acceleration.y + ", " + ev.acceleration.z + "\n");
+
+    num_data++;
+    //If we have enough raw sensor data...
+    if( num_data == NUM_DATA_PER_FRAME ){
+
+	//execute feature calculations.
+	featureExtraction();
+
+	//Let's classify the activity!
+	var current_activity = classify();
+	var japanese_label = translateLabel(current_activity);
+	$('#current_result').text( japanese_label );
+
+	//NEW: Save features to history
+	saveFeaturesToHistory();
+
+	//clear the raw sensor data
+	xdata=[];
+	ydata=[];
+	zdata=[];
+	//Clear the textarea
+	$('#raw-data').empty();
+	//Counter back to 0
+	num_data=0;
+    }
+
+}
+
+////////////////////////////////////////////////////////////////////
+//Function(2):センサデータから "feature"(特徴量)を計算する関数
+//  - この関数は NUM_DATA_PER_FRAME 変数で設定された数だけセンサデータが
+//    「設定されたタイムフレーム」にたまる度に呼ばれます。
+//  - 例: センサデータが 50Hz (=50 data / seconds)
+//        NUM_DATA_PER_FRAME が 200 の場合
+//        → 約4秒に1度の頻度で呼ばれます
+////////////////////////////////////////////////////////////////////
+//helper func. to calculate average
+const arrAvg = arr => arr.reduce((a,b) => a + b, 0) / arr.length
+//helper func. to calculate variance
+const arrVariance = (arr, avg) => arr.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / arr.length
+
+function featureExtraction(){
+    xmin = Math.min.apply(Math, xdata); $('#xmin').text(xmin);
+    xmax = Math.max.apply(Math, xdata); $('#xmax').text(xmax);
+    xave = arrAvg(xdata); $('#xave').text(xave);
+    xvariance = arrVariance(xdata, xave); $('#xvariance').text(xvariance);
+
+    ymin = Math.min.apply(Math, ydata); $('#ymin').text(ymin);
+    ymax = Math.max.apply(Math, ydata); $('#ymax').text(ymax);
+    yave = arrAvg(ydata); $('#yave').text(yave);
+    yvariance = arrVariance(ydata, yave); $('#yvariance').text(yvariance);
+
+    zmax = Math.max.apply(Math, zdata); $('#zmax').text(zmax);
+    zmin = Math.min.apply(Math, zdata); $('#zmin').text(zmin);
+    zave = arrAvg(zdata); $('#zave').text(zave);
+    zvariance = arrVariance(zdata, zave); $('#zvariance').text(zvariance);
+}
+
+////////////////////////////////////////////////////////////////////
+//Function(3): 最新フレームにおける特徴量(feature)から、現在のユーザの
+//行動を分類 (classify) する関数
+//  - scikit-learnで訓練した決定木モデルから自動生成
+//  - 7種類の行動を認識
+//  - 交差検証正解率: 83.48%、テストセット正解率: 86.96%
+//  - 訓練日: 2025-11-07
+////////////////////////////////////////////////////////////////////
+function classify() {
+    if (yvariance <= 14.5938) {
+        if (yvariance <= 0.6964) {
+            if (zave <= 0.0527) {
+                return 'still';
+            } else {
+                return 'stairs_down';
+            }
+        } else {
+            if (xvariance <= 1.6177) {
+                if (zvariance <= 3.7716) {
+                    if (zmin <= -2.5994) {
+                        return 'walking_hand';
+                    } else {
+                        return 'stairs_up';
+                    }
+                } else {
+                    if (zmax <= 3.3985) {
+                        return 'walking_hand';
+                    } else {
+                        return 'walking_music';
+                    }
+                }
+            } else {
+                if (ymin <= -4.9467) {
+                    if (xvariance <= 11.4101) {
+                        return 'running';
+                    } else {
+                        return 'running';
+                    }
+                } else {
+                    if (xave <= 0.0569) {
+                        if (xave <= -0.0151) {
+                            return 'stairs_down';
+                        } else {
+                            return 'running';
+                        }
+                    } else {
+                        return 'stairs_up';
+                    }
+                }
+            }
+        }
+    } else {
+        if (zave <= -0.1939) {
+            return 'running';
+        } else {
+            return 'walking_pocket';
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////
+// 英語ラベルを日本語に変換する関数
+////////////////////////////////////////////////////////////////////
+function translateLabel(englishLabel) {
+    const labelMap = {
+        'running': '走り',
+        'stairs_down': '階段下り',
+        'stairs_up': '階段登り',
+        'still': '静止',
+        'walking_hand': '歩き（手持ち）',
+        'walking_music': '歩き（音楽）',
+        'walking_pocket': '歩き（ポケット）'
+    };
+    return labelMap[englishLabel] || englishLabel;
+}
+
+////////////////////////////////////////////////////////////////////
+//NEW Function(4): 計算した特徴量を履歴に保存する関数
+////////////////////////////////////////////////////////////////////
+function saveFeaturesToHistory(){
+    // Get current activity label from input
+    var label = $('#activity-label').val() || 'unknown';
+
+    // Create CSV header (only once)
+    if(!hasHeader){
+        var header = "label, xmax, xmin, xave, xvariance, ymax, ymin, yave, yvariance, zmax, zmin, zave, zvariance\n";
+        $('#feature-history').val(header);
+        hasHeader = true;
+    }
+
+    // Create CSV line
+    var csvLine = label + ", " +
+                  xmax.toFixed(4) + ", " +
+                  xmin.toFixed(4) + ", " +
+                  xave.toFixed(4) + ", " +
+                  xvariance.toFixed(4) + ", " +
+                  ymax.toFixed(4) + ", " +
+                  ymin.toFixed(4) + ", " +
+                  yave.toFixed(4) + ", " +
+                  yvariance.toFixed(4) + ", " +
+                  zmax.toFixed(4) + ", " +
+                  zmin.toFixed(4) + ", " +
+                  zave.toFixed(4) + ", " +
+                  zvariance.toFixed(4) + "\n";
+
+    // Add to textarea
+    $('#feature-history').append(csvLine);
+
+    // Update frame count
+    frameCount++;
+    $('#frame-count').text(frameCount);
+
+    // Auto scroll to bottom
+    var textarea = document.getElementById('feature-history');
+    textarea.scrollTop = textarea.scrollHeight;
+}
+
+////////////////////////////////////////////////////////////////////
+//NEW Function(5): 特徴量履歴をクリップボードにコピー
+////////////////////////////////////////////////////////////////////
+function copyFeatures(){
+    var featureText = $('#feature-history').val();
+
+    if(!featureText || featureText.trim() === ''){
+        alert('コピーするデータがありません');
+        return;
+    }
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(featureText).then(function() {
+        alert('特徴量データをクリップボードにコピーしました！\n\nフレーム数: ' + frameCount);
+    }, function(err) {
+        // Fallback for older browsers
+        var textarea = document.getElementById('feature-history');
+        textarea.select();
+        document.execCommand('copy');
+        alert('特徴量データをクリップボードにコピーしました！\n\nフレーム数: ' + frameCount);
+    });
+}
+
+////////////////////////////////////////////////////////////////////
+//NEW Function(6): 特徴量履歴をクリア
+////////////////////////////////////////////////////////////////////
+function clearFeatures(){
+    if(frameCount === 0){
+        alert('クリアするデータがありません');
+        return;
+    }
+
+    if(confirm('特徴量履歴をクリアしますか？\n現在のフレーム数: ' + frameCount)){
+        $('#feature-history').val('');
+        frameCount = 0;
+        hasHeader = false;
+        $('#frame-count').text(frameCount);
+        alert('履歴をクリアしました');
+    }
+}
+
+</script>
+<!--  ===========================================  -->
+
+
+</html>
