@@ -141,10 +141,10 @@
 
       <div style="background-color: #f0f8ff; padding: 20px; border-left: 4px solid #4a90e2; margin: 20px 0;">
         <p style="font-size: 1.1em; margin: 0;">
-          <strong>正解率: <span style="color: #4a90e2; font-size: 1.4em;">83.48%</span></strong>
+          <strong>訓練データでの正解率: <span style="color: #4a90e2; font-size: 1.4em;">83%</span></strong>
         </p>
         <p style="margin: 10px 0 0 0; font-size: 0.9em; color: #666;">
-          （テストデータでは86.96%）
+          ※ ただし、実機では静止とポケット歩きは高精度、手持ち歩きと階段は低精度
         </p>
       </div>
 
@@ -164,20 +164,10 @@
       <!-- 4. わかったこと -->
       <h3 style="color: #555; margin-top: 25px;">4. わかったこと</h3>
       <p style="line-height: 1.7;">
-        左右方向（Y軸）の動きが一番重要だということがわかりました。ポケットに入れた状態だと、
-        歩くときの体の左右の揺れが大きく加速度に現れるので、それで判別できるみたいです。
+        決定木モデルによると、左右方向（Y軸）の分散が最も重要な判別基準になっていました。
+        ポケットに入れた状態では歩行時の左右の揺れが大きく、これが高精度な認識につながっています。
+        一方、手持ちの場合は持ち方によって加速度パターンが不安定になり、精度が下がることがわかりました。
       </p>
-      <p style="line-height: 1.7;">
-        判断の流れはこんな感じ:
-      </p>
-      <pre style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; font-size: 0.9em;">
-if (左右の動きが小さい) {
-    → 静止
-} else if (左右の動きが中くらい) {
-    → 走るか階段登り
-} else {
-    → 歩く
-}</pre>
 
       <!-- 5. 感想 -->
       <h3 style="color: #555; margin-top: 25px;">5. 感想</h3>
